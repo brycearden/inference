@@ -128,8 +128,8 @@ def inference(run,
   infer_model = model_helper.create_infer_model(model_creator, hparams, scope)
   sess, loaded_infer_model = start_sess_and_load_model(infer_model, ckpt_path,
                                                        hparams)
-  # Set to True to enable inference from frozen graph
-  if False:
+  # Set to False to disable inference from frozen graph and run fast again
+  if True:
     frozen_graph = None
     with infer_model.graph.as_default():
       output_node_names = ['hash_table_Lookup_1/LookupTableFindV2' ]
