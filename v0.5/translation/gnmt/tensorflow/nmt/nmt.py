@@ -260,6 +260,7 @@ def add_arguments(parser):
                       const=True, default=False,
                       help="True to train a language model, ignoring encoder")
 
+
   # Inference
   parser.add_argument("--ckpt", type=str, default="",
                       help="Checkpoint file to load a model for inference.")
@@ -663,7 +664,7 @@ def run_main(flags, default_hparams, train_fn, inference_fn, target_session=""):
       num_intra_threads=hparams.num_intra_threads,
       num_inter_threads=hparams.num_inter_threads)
   utils.print_out(
-      "# Devices visible to TensorFlow: %s" 
+      "# Devices visible to TensorFlow: %s"
       % repr(tf.Session(config=config_proto).list_devices()))
 
   ## Train / Decode

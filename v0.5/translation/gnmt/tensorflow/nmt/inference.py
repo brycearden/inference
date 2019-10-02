@@ -26,6 +26,7 @@ from . import gnmt_model
 from . import model as nmt_model
 from . import model_helper
 from .utils import misc_utils as utils
+from .utils import iterator_utils
 from .utils import nmt_utils
 
 __all__ = ["load_data", "inference",
@@ -127,8 +128,39 @@ def inference(run,
   infer_model = model_helper.create_infer_model(model_creator, hparams, scope)
   sess, loaded_infer_model = start_sess_and_load_model(infer_model, ckpt_path,
                                                        hparams)
+  if True:
+    frozen_graph = None
+    with infer_model.graph.as_default():
+      output_node_names = ['hash_table_Lookup_1/LookupTableFindV2' ]
+      other_node_names  = ['MakeIterator', 'IteratorToStringHandle', 'init_all_tables', 'NoOp', 'dynamic_seq2seq/decoder/NoOp']
+      frozen_graph = tf.graph_util.convert_variables_to_constants(sess,
+                                                                  tf.get_default_graph().as_graph_def(),
+                                                                  output_node_names=output_node_names + other_node_names)
+
+    with tf.Graph().as_default():
+      tf.graph_util.import_graph_def(frozen_graph, name="")
+      sess = tf.Session(graph=tf.get_default_graph(),
+             config=utils.get_config_proto(
+             num_intra_threads=hparams.num_intra_threads,
+             num_inter_threads=hparams.num_inter_threads)
+             )
+      iterator = iterator_utils.BatchedInput(
+        initializer=tf.get_default_graph().get_operation_by_name(infer_model.iterator.initializer.name),
+        source=tf.get_default_graph().get_tensor_by_name(infer_model.iterator.source.name),
+        target_input=None,
+        target_output=None,
+        source_sequence_length=tf.get_default_graph().get_tensor_by_name(infer_model.iterator.source_sequence_length.name),
+        target_sequence_length=None)
+      infer_model = model_helper.InferModel(
+            graph=tf.get_default_graph(),
+            model=infer_model.model,
+            src_placeholder=tf.get_default_graph().get_tensor_by_name(infer_model.src_placeholder.name),
+            batch_size_placeholder=tf.get_default_graph().get_tensor_by_name(infer_model.batch_size_placeholder.name),
+            iterator=iterator)
+
 
   if num_workers == 1:
+    start_time = time.time()
     single_worker_inference(
         run,
         iterations,
@@ -138,6 +170,8 @@ def inference(run,
         inference_input_file,
         inference_output_file,
         hparams)
+    stop_time = time.time()
+    print("single_worker_inference time: {:.4f} secs".format(stop_time - start_time))
   else:
     multi_worker_inference(
         sess,
@@ -165,7 +199,10 @@ def single_worker_inference(run,
   # Read data
   infer_data = load_data(inference_input_file, hparams)
 
+  infer_data = infer_data[0:6]
+
   with infer_model.graph.as_default():
+    sess.run(sess.graph.get_operation_by_name('init_all_tables'))
     sess.run(
         infer_model.iterator.initializer,
         feed_dict={

@@ -21,6 +21,7 @@ from __future__ import print_function
 import abc
 import collections
 import numpy as np
+import time
 
 import tensorflow as tf
 
@@ -669,11 +670,19 @@ class BaseModel(object):
 
   def infer(self, sess):
     assert self.mode == tf.contrib.learn.ModeKeys.INFER
-    output_tuple = InferOutputTuple(infer_logits=self.infer_logits,
-                                    infer_summary=self.infer_summary,
-                                    sample_id=self.sample_id,
-                                    sample_words=self.sample_words)
-    return sess.run(output_tuple)
+    # output_tuple = InferOutputTuple(infer_logits=self.infer_logits,
+    #                                 infer_summary=self.infer_summary,
+    #                                 sample_id=self.sample_id,
+    #                                 sample_words=self.sample_words)
+    output_tuple = InferOutputTuple(infer_logits=sess.graph.get_operation_by_name(self.infer_logits.name),
+                                    infer_summary=sess.graph.get_operation_by_name(self.infer_summary.name),
+                                    sample_id=sess.graph.get_tensor_by_name(self.sample_id.name),
+                                    sample_words=sess.graph.get_tensor_by_name(self.sample_words.name))
+    start_time = time.time()
+    res = sess.run(output_tuple)
+    stop_time = time.time()
+    print("infer time: {:.4f} secs".format(stop_time - start_time))
+    return res
 
   def decode(self, sess):
     """Decode a batch.
