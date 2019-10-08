@@ -59,7 +59,7 @@ inference_output_file = os.path.join(os.getcwd(), 'nmt', 'data', 'output',
 outpath = os.path.join(os.getcwd(), 'nmt', 'data', "output",
                        "console_out_gnmt.txt")
 
-cmd = "python -m nmt.nmt \
+cmd = "python3 -m nmt.nmt \
     --src=en --tgt=de \
     --ckpt="+cpk_path+" \
     --hparams_path="+haparams_path+" \
